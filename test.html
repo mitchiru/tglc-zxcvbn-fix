@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>zxcvbn-ts Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .password-input {
+            width: 300px;
+            padding: 8px;
+            font-size: 14px;
+        }
+        .strength-meter {
+            margin-top: 10px;
+            height: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .strength-bar {
+            height: 100%;
+            transition: all 0.3s ease;
+        }
+        .strength-0 { background: #ccc; width: 0%; }
+        .strength-1 { background: #ff4444; width: 20%; }
+        .strength-2 { background: #ff8800; width: 40%; }
+        .strength-3 { background: #ffaa00; width: 60%; }
+        .strength-4 { background: #88cc00; width: 80%; }
+        .strength-5 { background: #00cc44; width: 100%; }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>zxcvbn-ts WordPress Compatibility Test</h1>
+    
+    <div class="test-section">
+        <h2>Password Strength Test</h2>
+        <p>Enter a password to test the strength meter:</p>
+        <input type="password" id="password" class="password-input" placeholder="Enter password...">
+        <div class="strength-meter">
+            <div id="strength-bar" class="strength-bar strength-0"></div>
+        </div>
+        <div id="result" class="result">
+            Enter a password to see results...
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>User Input Test</h2>
+        <p>Test with user-specific words that should lower the score:</p>
+        <input type="text" id="userInputs" class="password-input" placeholder="Enter user inputs (comma-separated)">
+        <br><br>
+        <input type="password" id="passwordWithUser" class="password-input" placeholder="Enter password...">
+        <div class="strength-meter">
+            <div id="strength-bar-user" class="strength-bar strength-0"></div>
+        </div>
+        <div id="result-user" class="result">
+            Enter a password to see results...
+        </div>
+    </div>
+
+    <!-- Load our WordPress compatibility layer first -->
+    <script src="./dist/wp-password-strength-compat.min.js"></script>
+
+    <!-- Load our zxcvbn-ts bundle -->
+    <script>
+        // Simulate WordPress _zxcvbnSettings
+        window._zxcvbnSettings = {
+            src: './dist/zxcvbn-ts-bundle.min.js'
+        };
+    </script>
+    <script src="./dist/zxcvbn-async-secure.min.js"></script>
+
+    <script>
+        function updateStrengthMeter(password, userInputs, barId, resultId) {
+            if (typeof window.zxcvbn !== 'function') {
+                document.getElementById(resultId).textContent = 'zxcvbn not loaded yet...';
+                return;
+            }
+
+            const result = window.zxcvbn(password, userInputs);
+            const bar = document.getElementById(barId);
+            const resultDiv = document.getElementById(resultId);
+
+            // Update strength bar
+            bar.className = `strength-bar strength-${result.score}`;
+
+            // Update result display
+            resultDiv.innerHTML = `
+                <strong>Score:</strong> ${result.score}/4<br>
+                <strong>Guesses:</strong> ${result.guesses.toExponential(2)}<br>
+                <strong>Guesses Log10:</strong> ${result.guesses_log10.toFixed(2)}<br>
+                <strong>Feedback Warning:</strong> ${result.feedback.warning || 'None'}<br>
+                <strong>Feedback Suggestions:</strong> ${result.feedback.suggestions.join(', ') || 'None'}
+            `;
+        }
+
+        // Test basic password strength
+        document.getElementById('password').addEventListener('input', function() {
+            updateStrengthMeter(this.value, [], 'strength-bar', 'result');
+        });
+
+        // Test with user inputs
+        function testWithUserInputs() {
+            const password = document.getElementById('passwordWithUser').value;
+            const userInputsText = document.getElementById('userInputs').value;
+            const userInputs = userInputsText ? userInputsText.split(',').map(s => s.trim()) : [];
+            updateStrengthMeter(password, userInputs, 'strength-bar-user', 'result-user');
+        }
+
+        document.getElementById('passwordWithUser').addEventListener('input', testWithUserInputs);
+        document.getElementById('userInputs').addEventListener('input', testWithUserInputs);
+
+        // Test wp.passwordStrength functions immediately (should work with fallback)
+        console.log('Testing wp.passwordStrength functions availability...');
+        if (window.wp && window.wp.passwordStrength) {
+            if (window.wp.passwordStrength.meter) {
+                console.log('✅ wp.passwordStrength.meter is available!');
+
+                // Test the meter function
+                const testScore = window.wp.passwordStrength.meter('password123', ['user', 'test'], '');
+                console.log('wp.passwordStrength.meter test score:', testScore);
+            } else {
+                console.error('❌ wp.passwordStrength.meter is NOT available!');
+            }
+
+            if (window.wp.passwordStrength.userInputDisallowedList) {
+                console.log('✅ wp.passwordStrength.userInputDisallowedList is available!');
+
+                // Test the userInputDisallowedList function
+                const disallowedList = window.wp.passwordStrength.userInputDisallowedList();
+                console.log('userInputDisallowedList result:', disallowedList);
+            } else {
+                console.error('❌ wp.passwordStrength.userInputDisallowedList is NOT available!');
+            }
+        } else {
+            console.error('❌ wp.passwordStrength is NOT available!');
+        }
+
+        // Wait for zxcvbn to load
+        if (typeof window.zxcvbnReady === 'function') {
+            window.zxcvbnReady(function() {
+                console.log('zxcvbn loaded successfully!');
+
+                // Test some basic functionality
+                const testResult = window.zxcvbn('password123', ['user', 'test']);
+                console.log('Test result:', testResult);
+
+                // Test wp.passwordStrength.meter again (should now use zxcvbn)
+                if (window.wp && window.wp.passwordStrength && window.wp.passwordStrength.meter) {
+                    const upgradeScore = window.wp.passwordStrength.meter('password123', ['user', 'test'], '');
+                    console.log('wp.passwordStrength.meter upgraded score:', upgradeScore);
+                }
+
+                // Update any existing inputs
+                const passwordInput = document.getElementById('password');
+                if (passwordInput.value) {
+                    updateStrengthMeter(passwordInput.value, [], 'strength-bar', 'result');
+                }
+            });
+        } else {
+            console.log('zxcvbnReady not available, loading synchronously...');
+        }
+    </script>
+</body>
+</html>

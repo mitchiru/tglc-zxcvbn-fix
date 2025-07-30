@@ -1,0 +1,26 @@
+{
+  "name": "tglc-zxcvbn-fix",
+  "version": "1.0.0",
+  "description": "WordPress plugin to replace vulnerable zxcvbn-async with secure zxcvbn-ts v3.0.4",
+  "main": "dist/zxcvbn-ts-bundle.min.js",
+  "scripts": {
+    "build": "node build.js && node create-bundle.js",
+    "clean": "rm -rf dist node_modules"
+  },
+  "keywords": [
+    "wordpress",
+    "security",
+    "password",
+    "zxcvbn",
+    "strength"
+  ],
+  "author": "TGLC",
+  "license": "GPL-2.0-or-later",
+  "dependencies": {
+    "@zxcvbn-ts/core": "3.0.4",
+    "@zxcvbn-ts/language-common": "3.0.4"
+  },
+  "devDependencies": {
+    "uglify-js": "^3.17.4"
+  }
+}
